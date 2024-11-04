@@ -16,24 +16,10 @@ var outputs = require('./lib/outputs');
 function internalLoop (input, output) {
 }
 
-function manage (env, ctx) {
-
-  // source
-  // output
-  // env.extendedSettings.connect.source
-  var spec = { kind: 'disabled' };
-  if (!env.extendedSettings.connect) {
-    console.log("Skipping disabled nightscout-connect");
-    return;
-  }
-  if (!env.extendedSettings.connect.source) {
-    console.log("Skipping disabled nightscout-connect, no source driver spec");
-    return;
-  }
-
+function createHandle(spec, env, ctx) {
   spec.kind = env.extendedSettings.connect.source;
 
-  var internal = { name: 'internal' };
+  var internal = {name: 'internal'};
   var output = outputs(internal)(internal, ctx);
   console.log("CONFIGURED OUTPUT", output);
 
@@ -41,14 +27,14 @@ function manage (env, ctx) {
   // everything known for output
   // output must be passed into builder, before generate_driver is
   // called.
-  var make = builder({ output });
+  var make = builder({output});
 
   // select an available input source implementation based on env
   // variables/config
   var driver = sources(spec);
   var validated = driver.validate(env.extendedSettings.connect);
   if (validated.errors) {
-      ctx.bootErrors.push(...validated.errors);
+    ctx.bootErrors.push(...validated.errors);
   }
 
   console.log("INPUT PARAMS", spec, validated.config);
@@ -59,15 +45,17 @@ function manage (env, ctx) {
   }
   var impl = driver(validated.config, axios);
   impl.generate_driver(make);
-  var things = make( );
+  var things = make();
 
-  function handle ( ) { return actor; };
+  function handle() {
+    return actor;
+  };
   handle.run = () => {
     actor.send({type: 'START'});
     return Promise.resolve(handle);
   }
   handle.stop = () => {
-    actor.stop( );
+    actor.stop();
     return Promise.resolve(handle);
   }
 
@@ -77,10 +65,45 @@ function manage (env, ctx) {
   ctx.bus.once('tearDown', handle.stop);
   // console.log(things);
   var actor = interpret(things);
-  actor.start( );
+  actor.start();
   // actor.send({type: 'START'});
 
   return handle;
+}
+
+function manage (env, ctx) {
+
+  // source
+  // output
+  // env.extendedSettings.connect.source
+  var spec = { kind: 'disabled' };
+  if (!env.extendedSettings.connect) {
+    console.log("Skipping disabled nightscout-connect");
+    return;
+  }
+  if (!env.extendedSettings.connect.source && !env.extendedSettings.connect.multiSources) {
+    console.log("Skipping disabled nightscout-connect, no source driver spec");
+    return;
+  }
+
+  if (env.extendedSettings.connect.multiSources) {
+    let multiSources = env.extendedSettings.connect.multiSources;
+    var handles = []
+    multiSources.split(" ").forEach((multiSource) => {
+      var sourceEnv = {...env, extendedSettings: {...env.extendedSettings,
+        connect: {
+        ...env.extendedSettings.connect,
+        source: multiSource
+        }
+        }}
+      var sourceSpec = {...spec, kind: sourceEnv.extendedSettings.connect.source}
+
+      handles.push(createHandle(sourceSpec, sourceEnv, ctx))
+    })
+    return handles
+  }
+    spec.kind = env.extendedSettings.connect.source;
+    return createHandle(spec, env, ctx);
 }
 
 
