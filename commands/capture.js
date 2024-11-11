@@ -42,7 +42,6 @@ function main (argv) {
   var input = { kind: argv.source, url: argv.sourceEndpoint, apiSecret: argv.sourceApiSecret || '' };
   console.log("CONFIGURED INPUT", input);
 
-
   // var things = sidecarLoop(input, output, { dir: argv.dir });
   var output_config = endpoint;
   if (argv.output == 'filesystem') {
@@ -71,7 +70,7 @@ function main (argv) {
   }
 
   console.log("INPUT PARAMS", spec, validated.config);
-
+return
   if (!validated.ok) {
     console.log("Invalid, disabling nightscout-connect", validated);
     process.exit(1);

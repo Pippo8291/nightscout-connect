@@ -6,7 +6,7 @@ var builder = require('../lib/builder');
 var sources = require('../lib/sources');
 var outputs = require('../lib/outputs');
 
-function sidecarLoop (input, output) {
+function sidecarLoop (input, output,argv) {
   
   // everything known for output
   // output must be passed into builder, before generate_driver is
@@ -18,15 +18,21 @@ function sidecarLoop (input, output) {
   // select an available input source implementation based on env
   // variables/config
   var driver = sources(input);
-  console.log("INPUT PARAMS", input);
-  var impl = driver(input, axios);
+  var validated = driver.validate(argv);
+  if (validated.errors) {
+    validated.errors.forEach((item) => {
+      console.log(item);
+    });
+  }
+  console.log("INPUT PARAMS", input,validated.config);
+  var impl = driver(validated.config, axios);
   // var impl = testImpl.fakeFrame({ }, axios);
 
   impl.generate_driver(make);
 
   var built = make( );
   // console.log("BUILDER OUTPUT", built);
-  console.log("BUILDER OUTPUT", JSON.stringify(built, null, 2));
+  //console.log("BUILDER OUTPUT", JSON.stringify(built, null, 2));
   return built;
 
 }
@@ -40,10 +46,10 @@ function main (argv) {
   var output = { name: 'nightscout', url: argv.nightscoutEndpoint, apiSecret: argv.apiSecret };
   console.log("CONFIGURED OUTPUT", output);
   var input = { kind: argv.source, url: argv.sourceEndpoint, apiSecret: argv.sourceApiSecret };
+  
   console.log("CONFIGURED INPUT", input);
-
-  var things = sidecarLoop(input, output);
-  console.log(things);
+  var things = sidecarLoop(input, output,argv);
+  //console.log(things);
   var actor = interpret(things);
   actor.start( );
   actor.send({type: 'START'});
