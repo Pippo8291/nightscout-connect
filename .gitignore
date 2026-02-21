@@ -1,2 +1,8 @@
 .*.sw[po]
 node_modules/
+.idea/
+logs/
+scratch/
+.env
+CLAUDE.md
+mn
