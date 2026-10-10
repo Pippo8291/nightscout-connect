@@ -5,9 +5,10 @@ var axios = require('axios');
 var builder = require('../lib/builder');
 var sources = require('../lib/sources');
 var outputs = require('../lib/outputs');
+var redact = require('../lib/redact');
 
 function sidecarLoop (input, output,argv) {
-  
+
   // everything known for output
   // output must be passed into builder, before generate_driver is
   // called.
@@ -24,7 +25,7 @@ function sidecarLoop (input, output,argv) {
       console.log(item);
     });
   }
-  console.log("INPUT PARAMS", input,validated.config);
+  console.log("INPUT PARAMS", redact(input), redact(validated.config));
   var impl = driver(validated.config, axios);
   // var impl = testImpl.fakeFrame({ }, axios);
 
@@ -38,16 +39,16 @@ function sidecarLoop (input, output,argv) {
 }
 
 function main (argv) {
-  console.log("STARTING", argv);
+  console.log("STARTING", redact(argv));
   // selected output
   // argv.nightscoutEndpoint;
   // argv.apiSecret;
-  // 
+  //
   var output = { name: 'nightscout', url: argv.nightscoutEndpoint, apiSecret: argv.apiSecret };
-  console.log("CONFIGURED OUTPUT", output);
+  console.log("CONFIGURED OUTPUT", redact(output));
   var input = { kind: argv.source, url: argv.sourceEndpoint, apiSecret: argv.sourceApiSecret };
-  
-  console.log("CONFIGURED INPUT", input);
+
+  console.log("CONFIGURED INPUT", redact(input));
   var things = sidecarLoop(input, output,argv);
   //console.log(things);
   var actor = interpret(things);

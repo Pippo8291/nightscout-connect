@@ -5,9 +5,10 @@ var axios = require('axios');
 var builder = require('../lib/builder');
 var sources = require('../lib/sources');
 var outputs = require('../lib/outputs');
+var redact = require('../lib/redact');
 
 function sidecarLoop (input, output, capture) {
-  
+
   // everything known for output
   // output must be passed into builder, before generate_driver is
   // called.
@@ -18,7 +19,7 @@ function sidecarLoop (input, output, capture) {
   // select an available input source implementation based on env
   // variables/config
   var driver = sources(input);
-  console.log("INPUT PARAMS", input);
+  console.log("INPUT PARAMS", redact(input));
   var impl = driver(input, axios);
   // var impl = testImpl.fakeFrame({ }, axios);
 
@@ -32,15 +33,15 @@ function sidecarLoop (input, output, capture) {
 }
 
 function main (argv) {
-  console.log("STARTING", argv);
+  console.log("STARTING", redact(argv));
   // selected output
   // argv.nightscoutEndpoint;
   // argv.apiSecret;
-  // 
+  //
 
   var endpoint = { name: 'nightscout', url: argv.nightscoutEndpoint, apiSecret: argv.apiSecret };
   var input = { kind: argv.source, url: argv.sourceEndpoint, apiSecret: argv.sourceApiSecret || '' };
-  console.log("CONFIGURED INPUT", input);
+  console.log("CONFIGURED INPUT", redact(input));
 
   // var things = sidecarLoop(input, output, { dir: argv.dir });
   var output_config = endpoint;
@@ -52,7 +53,7 @@ function main (argv) {
     };
   }
 
-  console.log("CONFIGURED OUTPUT", output_config);
+  console.log("CONFIGURED OUTPUT", redact(output_config));
   var output = outputs(output_config)(output_config, axios);
   var capture = { dir: argv.dir };
   var make = builder({ output, capture });
@@ -69,7 +70,7 @@ function main (argv) {
     });
   }
 
-  console.log("INPUT PARAMS", spec, validated.config);
+  console.log("INPUT PARAMS", redact(spec), redact(validated.config));
 return
   if (!validated.ok) {
     console.log("Invalid, disabling nightscout-connect", validated);

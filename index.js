@@ -11,6 +11,7 @@ var axios = require('axios');
 var builder = require('./lib/builder');
 var sources = require('./lib/sources');
 var outputs = require('./lib/outputs');
+var redact = require('./lib/redact');
 
 
 function internalLoop (input, output) {
@@ -21,7 +22,7 @@ function createHandle(spec, env, ctx) {
 
   var internal = {name: 'internal'};
   var output = outputs(internal)(internal, ctx);
-  console.log("CONFIGURED OUTPUT", output);
+  console.log("CONFIGURED OUTPUT", redact(output));
 
   // var things = internalLoop(input, output);
   // everything known for output
@@ -37,7 +38,7 @@ function createHandle(spec, env, ctx) {
     ctx.bootErrors.push(...validated.errors);
   }
 
-  console.log("INPUT PARAMS", spec, validated.config);
+  console.log("INPUT PARAMS", redact(spec), redact(validated.config));
 
   if (!validated.ok) {
     console.log("Invalid, disabling nightscout-connect", validated);
