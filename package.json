@@ -10,7 +10,7 @@
     "nightscout-connect": "bin/nightscout-connect"
   },
   "scripts": {
-    "test": "node test/dedup-regression.js && node test/treatment-patch-regression.js"
+    "test": "node test/dedup-regression.js && node test/treatment-patch-regression.js && node test/profile-sync-regression.js"
   },
   "repository": {
     "type": "git",
