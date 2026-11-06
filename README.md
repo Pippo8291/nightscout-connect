@@ -44,6 +44,7 @@ point.
 * `ENABLE=connect` include the keyword `connect` in the `ENABLE` list.
 * Environment variable prefix `CONNECT_`:
   * `CONNECT_SOURCE` - The name for the source of one of the supported inputs.  one of `nightscout`, `dexcomshare`, etc...
+  * `CONNECT_MULTI_SOURCES` - Instead of `CONNECT_SOURCE`, a space-separated list of sources to run side by side in the Nightscout plugin, for example `dexcomshare glooko`. Each connector reads the same `CONNECT_` settings.
   * `CONNECT_DEBUG` - Opt in to routine connector diagnostics with `true` or
     `on`. By default, the Nightscout plugin inherits `env.debug.logging`
     (`DEBUG_LOGGING` in supporting Nightscout versions), or stays quiet when
