@@ -39,6 +39,7 @@ are separated so synthetic tests can exercise each contract independently.
 | Basal or unknown-class injection | `Note` plus `glookoInsulin` | Does not enter Nightscout's rapid-insulin IOB calculation |
 | Site/reservoir/sensor/battery events | Standard careportal event | Feeds relevant age indicators; unsupported kinds preserved as notes |
 | Alarms, ordinary notes, pump modes | `Note` | Human-readable text; alarms never become `Announcement` notifications |
+| Omnipod 5 activity (hypoprotect) mode | `Exercise` with duration | One per contiguous session; notes hold only the duration label (e.g. `1 h 30 min`), the interval is in `activityMode` (`type`, `timestamp`, `endTimestamp`, `duration` in seconds) |
 | Automated delivery / maximum delivery / pause bands | `Note` with duration | Historical chart annotations only; graph coordinates are not insulin rates |
 | Exercise | `Exercise` | Duration normalized to minutes |
 | Pump IOB | `devicestatus.pump.iob` | Timestamp of the source snapshot, never the import time |

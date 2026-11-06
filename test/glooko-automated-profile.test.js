@@ -68,7 +68,7 @@ test('a manual-mode interval switches to the Manual profile for its duration', (
   assert.notEqual(note.identifier, switches[0].identifier);
 
   const window = out.glookoSync.pumpStateWindow;
-  assert.deepEqual(window.eventTypes, ['Note', 'Profile Switch']);
+  assert.deepEqual(window.eventTypes, ['Note', 'Exercise', 'Profile Switch']);
   assert.ok(window.identifiers.includes(switches[0].identifier));
 });
 
@@ -79,10 +79,10 @@ test('the switch keeps its identity while Glooko extends the interval', () => {
   assert.equal(id(first), id(later));
 });
 
-test('without the option no profile switch is written and reconciliation stays on notes', () => {
+test('without the option no profile switch is written or reconciled', () => {
   const out = transform(batch({ pumpOp5ManualMode: [interval('2026-07-01T12:00:00Z', '2026-07-01T13:00:00Z')] }), opts);
   assert.equal(out.treatments.filter((t) => t.eventType === 'Profile Switch').length, 0);
-  assert.equal(out.glookoSync.pumpStateWindow.eventTypes, undefined);
+  assert.deepEqual(out.glookoSync.pumpStateWindow.eventTypes, ['Note', 'Exercise']);
 });
 
 test('reconciliation removes obsolete profile switches as well as notes', async () => {
