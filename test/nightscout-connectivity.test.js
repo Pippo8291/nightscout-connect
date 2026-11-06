@@ -93,6 +93,11 @@ test('Nightscout source/output round-trips a full-sync fixture shape', async () 
 
   await withServer(async (req, res) => {
     assert.equal(req.headers['api-secret'], sha1('output-secret'));
+    if (req.method === 'GET' && req.path === '/api/v1/entries.json') {
+      // Readings already stored near these timestamps (lib/outputs/entry-match.js).
+      sendJson(res, 200, []);
+      return;
+    }
     if (req.path === '/api/v1/entries.json') {
       assert.deepEqual(JSON.parse(req.body), fullSyncFixture.entries);
       sendJson(res, 200, fullSyncFixture.entries);
@@ -118,11 +123,12 @@ test('Nightscout source/output round-trips a full-sync fixture shape', async () 
     const output = nightscoutOutput({ url: baseURL, apiSecret: 'output-secret' }, axios);
     const bookmark = await output(fullSyncFixture);
 
-    assert.deepEqual(requests.map((req) => `${req.method} ${req.path}`), [
-      'POST /api/v1/entries.json',
-      'POST /api/v1/treatments.json',
+    assert.deepEqual(requests.map((req) => `${req.method} ${req.path}`).sort(), [
+      'GET /api/v1/entries.json',
       'POST /api/v1/devicestatus.json',
-      'POST /api/v1/profile.json'
+      'POST /api/v1/entries.json',
+      'POST /api/v1/profile.json',
+      'POST /api/v1/treatments.json'
     ]);
     assert.deepEqual(bookmark, {
       entries: new Date('2025-10-09T08:53:20.000Z'),
