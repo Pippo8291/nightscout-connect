@@ -245,6 +245,7 @@ To synchronize from Glooko use the following variables.
 * `CONNECT_GLOOKO_IMPORT_PROFILE=false` opt in to importing a complete active pump profile; this can change Nightscout's active calculation settings
 * `CONNECT_GLOOKO_EXTENDED_BOLUS_DURATION_UNIT=` leave unset unless the device's duration unit is verified; accepts `seconds` or `minutes`
 * `CONNECT_GLOOKO_SKIP_ENTRIES=false` set true when another connector already supplies CGM
+* `CONNECT_GLOOKO_SESSION_RENEWAL_TIMES=` optional comma-separated local `HH:MM` times (for example `08:30,12:30,18:30,23:59`) at which to sign in again; a new sign-in prompts Glooko to sync, so fresh data arrives at those times. Unset keeps the 24 h session
 * `CONNECT_GLOOKO_USE_V3_GRAPH=true` enables the optional graph fallback in **legacy** mode; sync mode manages fallback automatically
 
 By default, `CONNECT_GLOOKO_SERVER` is set to `api.glooko.com` because the
