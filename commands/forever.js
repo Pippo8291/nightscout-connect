@@ -5,10 +5,10 @@ var axios = require('axios');
 var builder = require('../lib/builder');
 var sources = require('../lib/sources');
 var outputs = require('../lib/outputs');
-var redact = require('../lib/redact');
+var createLogger = require('../lib/logging');
 
-function sidecarLoop (input, output,argv) {
-
+function sidecarLoop (input, output) {
+  
   // everything known for output
   // output must be passed into builder, before generate_driver is
   // called.
@@ -19,44 +19,47 @@ function sidecarLoop (input, output,argv) {
   // select an available input source implementation based on env
   // variables/config
   var driver = sources(input);
-  var validated = driver.validate(argv);
-  if (validated.errors) {
-    validated.errors.forEach((item) => {
-      console.log(item);
-    });
-  }
-  console.log("INPUT PARAMS", redact(input), redact(validated.config));
-  var impl = driver(validated.config, axios);
+  var _v = driver.validate ? driver.validate(input) : null;
+  if (_v && !_v.ok) console.log("VALIDATION ERRORS", { count: _v.errors.length });
+  var _opts = (_v && _v.ok) ? _v.config : input;
+  console.log("DRIVER CONFIGURED");
+  var impl = driver(_opts, axios);
   // var impl = testImpl.fakeFrame({ }, axios);
 
   impl.generate_driver(make);
 
   var built = make( );
   // console.log("BUILDER OUTPUT", built);
-  //console.log("BUILDER OUTPUT", JSON.stringify(built, null, 2));
   return built;
 
 }
 
+// Anything a machine logs is reduced to a fixed label, printed only with
+// --debug / CONNECT_DEBUG (Andy Low, 6abefe1).
+function stateMachineLogger (argv) {
+  var log = createLogger(argv.debug);
+  return (label) => log.debug(typeof label === 'string' ? label : 'State machine log');
+}
+
 function main (argv) {
-  console.log("STARTING", redact(argv));
+  console.log("STARTING");
   // selected output
   // argv.nightscoutEndpoint;
   // argv.apiSecret;
-  //
+  // 
   var output = { name: 'nightscout', url: argv.nightscoutEndpoint, apiSecret: argv.apiSecret };
-  console.log("CONFIGURED OUTPUT", redact(output));
-  var input = { kind: argv.source, url: argv.sourceEndpoint, apiSecret: argv.sourceApiSecret };
+  console.log("CONFIGURED OUTPUT", { name: output.name });
+  var input = Object.assign({}, argv, { kind: argv.source, url: argv.sourceEndpoint, apiSecret: argv.sourceApiSecret });
+  // argv now carries every CONNECT_* env var, credentials included, so log the
+  // shape rather than the values.
+  console.log("CONFIGURED INPUT");
 
-  console.log("CONFIGURED INPUT", redact(input));
-  var things = sidecarLoop(input, output,argv);
-  //console.log(things);
-  var actor = interpret(things);
+  var things = sidecarLoop(input, output);
+  var actor = interpret(things, { logger: stateMachineLogger(argv) });
   actor.start( );
   actor.send({type: 'START'});
-  // setTimeout(( ) => {
-  // actor.send({type: 'STOP'});
-  // }, 60000 * 5);
+  // Runs until the process is stopped: a timed STOP would end the sidecar
+  // after a day and leave the process manager with nothing to restart.
 
 }
 

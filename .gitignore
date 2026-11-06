@@ -3,6 +3,11 @@ node_modules/
 .idea/
 logs/
 scratch/
-.env
 CLAUDE.md
 mn
+.env
+.env.*
+!.env.example
+
+# Private local validation credentials, databases/config and reports
+.local/
