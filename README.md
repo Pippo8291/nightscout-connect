@@ -244,6 +244,7 @@ To synchronize from Glooko use the following variables.
 * `CONNECT_GLOOKO_DATA_MODE=sync` paginated sync feeds (default); `legacy` retains the earlier fetcher
 * `CONNECT_GLOOKO_LOOKBACK_DAYS=14` glucose history and initial treatment update window, from 1 to 90 days; changing it backfills the requested glucose window in resumable batches (sync mode)
 * `CONNECT_GLOOKO_IMPORT_PROFILE=false` opt in to importing a complete active pump profile; this can change Nightscout's active calculation settings
+* `CONNECT_GLOOKO_AUTOMATED_PROFILE=false` for automated-mode pumps (Omnipod 5): with `CONNECT_GLOOKO_IMPORT_PROFILE=true`, the imported profile holds `Automated` (default, no basal, because the pump sets delivery itself) and `Manual` (the pump's basal program), and each manual-mode interval becomes a `Profile Switch` to `Manual` for its duration
 * `CONNECT_GLOOKO_EXTENDED_BOLUS_DURATION_UNIT=` leave unset unless the device's duration unit is verified; accepts `seconds` or `minutes`
 * `CONNECT_GLOOKO_SKIP_ENTRIES=false` set true when another connector already supplies CGM
 * `CONNECT_GLOOKO_SESSION_RENEWAL_TIMES=` optional comma-separated local `HH:MM` times (for example `08:30,12:30,18:30,23:59`) at which to sign in again; a new sign-in prompts Glooko to sync, so fresh data arrives at those times. Unset keeps the 24 h session
