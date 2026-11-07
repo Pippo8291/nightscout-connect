@@ -248,14 +248,16 @@ To synchronize from Glooko use the following variables.
 * `CONNECT_GLOOKO_EXTENDED_BOLUS_DURATION_UNIT=` leave unset unless the device's duration unit is verified; accepts `seconds` or `minutes`
 * `CONNECT_GLOOKO_SKIP_ENTRIES=false` set true when another connector already supplies CGM
 * `CONNECT_GLOOKO_SESSION_RENEWAL_TIMES=` optional comma-separated local `HH:MM` times (for example `08:30,12:30,18:30,23:59`) at which to sign in again; a new sign-in prompts Glooko to sync, so fresh data arrives at those times. Unset keeps the 24 h session
+* `CONNECT_GLOOKO_WEB_SIGN_IN=false` set true so that each sign-in (start, renewal times, on-demand sync) also signs in to the web app (`my.glooko.com`, the regional host for `CONNECT_GLOOKO_ENV`) the way a browser does. Only that web sign-in prompts Glooko to pull new pump data in (verified for Omnipod 5 on `de-fr`); the API sign-in used for fetching does not. Data is still fetched with the API session; a failed web sign-in only logs a warning. Each sign-in is logged with its time
 * `CONNECT_GLOOKO_USE_V3_GRAPH=true` enables the optional graph fallback in **legacy** mode; sync mode manages fallback automatically
 * `CONNECT_HTTP_PORT=` optional; when set, the stand-alone `forever` command also serves `POST /glooko/sync` on this port (see "Glooko sync on demand" below)
 * `CONNECT_SYNC_PERMISSION=api:treatments:create` the Nightscout permission a token needs to call `POST /glooko/sync`
 
 #### Glooko sync on demand
 
-Glooko pulls new pump data in only after a sign-in, and each sign-in shows up in
-Glooko's own graph view. With `CONNECT_HTTP_PORT` set, an app (for example
+Glooko pulls new pump data in only after a sign-in to its web app, and each
+sign-in shows up in Glooko's own graph view, so set `CONNECT_GLOOKO_WEB_SIGN_IN=true`
+as well. With `CONNECT_HTTP_PORT` set, an app (for example
 diamanage) can ask the importer to sync now instead of signing in itself:
 
 ```
