@@ -249,6 +249,36 @@ To synchronize from Glooko use the following variables.
 * `CONNECT_GLOOKO_SKIP_ENTRIES=false` set true when another connector already supplies CGM
 * `CONNECT_GLOOKO_SESSION_RENEWAL_TIMES=` optional comma-separated local `HH:MM` times (for example `08:30,12:30,18:30,23:59`) at which to sign in again; a new sign-in prompts Glooko to sync, so fresh data arrives at those times. Unset keeps the 24 h session
 * `CONNECT_GLOOKO_USE_V3_GRAPH=true` enables the optional graph fallback in **legacy** mode; sync mode manages fallback automatically
+* `CONNECT_HTTP_PORT=` optional; when set, the stand-alone `forever` command also serves `POST /glooko/sync` on this port (see "Glooko sync on demand" below)
+* `CONNECT_SYNC_PERMISSION=api:treatments:create` the Nightscout permission a token needs to call `POST /glooko/sync`
+
+#### Glooko sync on demand
+
+Glooko pulls new pump data in only after a sign-in, and each sign-in shows up in
+Glooko's own graph view. With `CONNECT_HTTP_PORT` set, an app (for example
+diamanage) can ask the importer to sync now instead of signing in itself:
+
+```
+POST /glooko/sync
+Authorization: Bearer <Nightscout access token or the JWT Nightscout issued for it>
+```
+
+* The token is checked against `CONNECT_NIGHTSCOUT_ENDPOINT`
+  (`/api/v2/authorization/request/<token>`) and needs `CONNECT_SYNC_PERMISSION`
+  (default `api:treatments:create`, the `careportal` role). Read access is not
+  enough. If the Nightscout's default roles (`AUTH_DEFAULT_ROLES`, or
+  `TREATMENTS_AUTH=false`) already grant that permission, every token would
+  pass, so the endpoint answers `503` and stays off.
+* The importer signs in again only when its last sign-in is at least 15 minutes
+  old; otherwise it only fetches. Requests that arrive while a sync runs share it.
+* It fetches at once (at most 45 s): new data → `200 {signedIn, lastSignInAt,
+  finishedAt}`. Otherwise → `202 {signedIn, lastSignInAt, followUpAt}` and it
+  fetches again 60 s and 150 s after the request (Glooko needs 1–2 minutes after
+  a sign-in), stopping at the first fetch with new data.
+* Errors: `401` unknown token, `403` missing permission, `502` sign-in or fetch
+  failed, `503` Nightscout unreachable or endpoint disabled.
+* The server speaks plain HTTP and binds `0.0.0.0`: expose it only behind TLS
+  (a reverse proxy), since requests carry a Nightscout token.
 
 By default, `CONNECT_GLOOKO_SERVER` is set to `api.glooko.com` because the
 default value for `CONNECT_GLOOKO_ENV` is `default`.

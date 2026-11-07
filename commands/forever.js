@@ -6,14 +6,15 @@ var builder = require('../lib/builder');
 var sources = require('../lib/sources');
 var outputs = require('../lib/outputs');
 var createLogger = require('../lib/logging');
+var { createSyncEndpoint } = require('../lib/sync');
 
-function sidecarLoop (input, output) {
+function sidecarLoop (input, output, sync) {
   
   // everything known for output
   // output must be passed into builder, before generate_driver is
   // called.
   var endpoint = outputs(output)(output, axios);
-  var make = builder({ output: endpoint });
+  var make = builder({ output: endpoint, sync });
   // var make = builder({ output });
 
   // select an available input source implementation based on env
@@ -30,7 +31,7 @@ function sidecarLoop (input, output) {
 
   var built = make( );
   // console.log("BUILDER OUTPUT", built);
-  return built;
+  return { machine: built, impl };
 
 }
 
@@ -54,10 +55,19 @@ function main (argv) {
   // shape rather than the values.
   console.log("CONFIGURED INPUT");
 
-  var things = sidecarLoop(input, output);
-  var actor = interpret(things, { logger: stateMachineLogger(argv) });
+  // On-demand Glooko sync (POST /glooko/sync), only with CONNECT_HTTP_PORT.
+  var syncEndpoint = createSyncEndpoint(argv, { logger: createLogger(argv.debug) });
+  var loop = sidecarLoop(input, output, syncEndpoint ? syncEndpoint.hooks : undefined);
+  var actor = interpret(loop.machine, { logger: stateMachineLogger(argv) });
   actor.start( );
   actor.send({type: 'START'});
+  if (syncEndpoint) {
+    syncEndpoint.attach({
+      send: (event) => actor.send(event),
+      lastSignInMs: loop.impl.lastSignInMs,
+    });
+    syncEndpoint.listen( ).catch(( ) => console.error('nightscout-connect: Glooko sync endpoint could not start'));
+  }
   // Runs until the process is stopped: a timed STOP would end the sidecar
   // after a day and leave the process manager with nothing to restart.
 
