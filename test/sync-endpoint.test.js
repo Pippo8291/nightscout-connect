@@ -56,3 +56,34 @@ test('the hooks reach the controller once it is attached', () => {
   endpoint.controller().request();
   assert.deepEqual(sent, ['SYNC_NOW']);
 });
+
+test('a port already in use rejects listen() instead of crashing the process', async () => {
+  const blocker = http.createServer();
+  await new Promise((resolve) => blocker.listen(0, '127.0.0.1', resolve));
+  try {
+    const getJson = async () => ({ status: 200, data: { settings: { authDefaultRoles: 'readable' } } });
+    const endpoint = createSyncEndpoint(
+      { source: 'glooko', httpPort: blocker.address().port, nightscoutEndpoint: 'https://ns.example' },
+      { logger: quiet, getJson, host: '127.0.0.1' },
+    );
+    endpoint.attach({ send () {}, lastSignInMs: () => null });
+    await assert.rejects(endpoint.listen());
+  } finally {
+    await new Promise((resolve) => blocker.close(resolve));
+  }
+});
+
+test('status.json that cannot be read leaves the endpoint on and warns', async () => {
+  for (const response of [{ status: 401, data: { message: 'Unauthorized' } }, { status: 200, data: '<html>' }, { status: 500, data: null }]) {
+    const warnings = [];
+    const logger = { ...quiet, warn: (m) => warnings.push(m) };
+    const endpoint = createSyncEndpoint(
+      { source: 'glooko', httpPort: 0, nightscoutEndpoint: 'https://ns.example' },
+      { logger, getJson: async () => response, host: '127.0.0.1' },
+    );
+    endpoint.attach({ send () {}, lastSignInMs: () => null });
+    const server = await endpoint.listen();
+    await new Promise((resolve) => server.close(resolve));
+    assert.equal(warnings.length, 1, JSON.stringify(response));
+  }
+});

@@ -65,8 +65,11 @@ function main (argv) {
     syncEndpoint.attach({
       send: (event) => actor.send(event),
       lastSignInMs: loop.impl.lastSignInMs,
+      lastSignInFailureMs: loop.impl.lastSignInFailureMs,
     });
-    syncEndpoint.listen( ).catch(( ) => console.error('nightscout-connect: Glooko sync endpoint could not start'));
+    // Polling goes on without the endpoint (e.g. CONNECT_HTTP_PORT already in use).
+    syncEndpoint.listen( ).catch((err) => console.error('nightscout-connect: Glooko sync endpoint could not start'
+      + (err && err.code ? ' (' + err.code + ')' : '')));
   }
   // Runs until the process is stopped: a timed STOP would end the sidecar
   // after a day and leave the process manager with nothing to restart.

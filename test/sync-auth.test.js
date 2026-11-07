@@ -78,4 +78,8 @@ test('default roles: whether they already grant the permission', () => {
   assert.equal(defaultRolesGrant('custom-x', PERMISSION), null);
   assert.equal(defaultRolesGrant(undefined, PERMISSION), false);
   assert.equal(defaultRolesGrant('', PERMISSION), false);
+  // Nightscout splits AUTH_DEFAULT_ROLES on blanks, commas and colons (defaultroles.js)
+  assert.equal(defaultRolesGrant('readable,careportal', PERMISSION), true);
+  assert.equal(defaultRolesGrant('readable:careportal', PERMISSION), true);
+  assert.equal(defaultRolesGrant('readable, denied', PERMISSION), false);
 });

@@ -137,6 +137,27 @@ test('RESET_SESSION drops the session and the next request authenticates again',
   });
 });
 
+test('a reset request during a running sign-in leaves that sign-in alone', async () => {
+  let authentications = 0;
+  const session = createSession({
+    authenticate: () => new Promise((resolve) => setTimeout(() => { authentications++; resolve({ cookies: 'c' }); }, 80)),
+    authorize: async () => ({ user: 'u' }),
+    delays: { REFRESH_AFTER_SESSSION_DELAY: HOUR, EXPIRE_SESSION_DELAY: 2 * HOUR },
+  });
+  const poller = createPoller(session, { services: {}, names: [], states: {} });
+  await running(poller, async (service) => {
+    service.send({ type: 'START' });
+    service.send({ type: 'SESSION_REQUIRED' });   // a frame needs a session: sign-in starts
+    await tick(20);
+    service.send({ type: 'RESET_SESSION' });      // the sync request arrives mid sign-in
+    await tick(150);
+    const sessionState = service.children.get('Session').state;
+    assert.equal(authentications, 1);
+    assert.equal(sessionState.matches('Active'), true, `session is ${JSON.stringify(sessionState.value)}`);
+    assert.ok(sessionState.context.session, 'the signed-in session is kept');
+  });
+});
+
 test('the glooko source remembers when it last signed in', async () => {
   const before = Date.now();
   const config = glookoSource.validate({ glookoEmail: 'a@example.test', glookoPassword: 'pw' }).config;
@@ -147,4 +168,16 @@ test('the glooko source remembers when it last signed in', async () => {
   impl.generate_driver({ support_session: (s) => { registered = s; }, register_loop: () => {} });
   await registered.authenticate();
   assert.ok(impl.lastSignInMs() >= before);
+});
+
+test('the glooko source remembers a failed sign-in', async () => {
+  const config = glookoSource.validate({ glookoEmail: 'a@example.test', glookoPassword: 'pw' }).config;
+  const impl = glookoSource(config, { create: () => ({}) });
+  assert.equal(impl.lastSignInFailureMs(), null);
+  let registered;
+  impl.authFromCredentials = async () => { throw new Error('bad password'); };
+  impl.generate_driver({ support_session: (s) => { registered = s; }, register_loop: () => {} });
+  await assert.rejects(registered.authenticate());
+  assert.ok(impl.lastSignInFailureMs() > 0);
+  assert.equal(impl.lastSignInMs(), null);
 });

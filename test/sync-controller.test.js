@@ -173,3 +173,41 @@ test('pump-state treatments never count as new data', async () => {
   second.frame({ entryMs: T0 - 10 * MIN, treatments: [{ created_at: new Date(T0).toISOString(), glookoSource: 'bolus' }] });
   assert.equal((await bolus).status, 200);
 });
+
+test('after a failed sign-in, requests within 15 minutes fail fast and trigger nothing', async () => {
+  const time = fakeTime();
+  const sent = [];
+  let failedAt = T0 - 5 * MIN;
+  const controller = createSyncController({
+    send: (event) => sent.push(event.type),
+    lastSignInMs: () => T0 - 60 * MIN,
+    lastSignInFailureMs: () => failedAt,
+    now: time.now,
+    setTimeout: time.setTimeout,
+    clearTimeout: time.clearTimeout,
+  });
+  const result = await controller.request();
+  assert.equal(result.status, 502);
+  assert.match(result.error, /sign-in failed/i);
+  assert.deepEqual(sent, []);
+
+  // 15 minutes after the failure a request may try again
+  failedAt = T0 - 15 * MIN;
+  controller.request();
+  assert.deepEqual(sent, ['RESET_SESSION', 'SYNC_NOW']);
+});
+
+test('a failure older than the last successful sign-in does not block', () => {
+  const time = fakeTime();
+  const sent = [];
+  const controller = createSyncController({
+    send: (event) => sent.push(event.type),
+    lastSignInMs: () => T0 - 2 * MIN,
+    lastSignInFailureMs: () => T0 - 5 * MIN,
+    now: time.now,
+    setTimeout: time.setTimeout,
+    clearTimeout: time.clearTimeout,
+  });
+  controller.request();
+  assert.deepEqual(sent, ['SYNC_NOW']);
+});
