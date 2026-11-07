@@ -101,13 +101,14 @@ test('the cycle reports frame outcomes and transformed data to its hooks', async
   const outcomes = [];
   const transformed = [];
   await running(cycleFor(log, {
+    on_frame_start: () => outcomes.push('start'),
     on_frame_outcome: (o) => outcomes.push(o),
     on_transformed: (d) => transformed.push(d),
   }), async (service) => {
     await tick();
     service.send({ type: 'SYNC_NOW' });
     await tick();
-    assert.deepEqual(outcomes, [{ ok: true, status: undefined }]);
+    assert.deepEqual(outcomes, ['start', { ok: true, status: undefined }]);
     assert.deepEqual(transformed, [{ entries: [{ date: 1 }], treatments: [] }]);
   });
 });
