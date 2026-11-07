@@ -63,7 +63,7 @@ test('a manual-mode interval switches to the Manual profile for its duration', (
   assert.equal(switches[0].created_at, '2026-07-01T10:00:00.000Z');
   assert.ok(switches[0].identifier.startsWith('glooko:pump-state:'));
   // The state note is still there, with its own identity.
-  const note = out.treatments.find((t) => t.eventType === 'Note' && t.notes === 'Manual mode');
+  const note = out.treatments.find((t) => t.eventType === 'Note' && t.notes === 'Manual mode (1 h 30 min)');
   assert.ok(note);
   assert.notEqual(note.identifier, switches[0].identifier);
 

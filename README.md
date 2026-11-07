@@ -299,8 +299,10 @@ exercise, pump events and alarms. It supplements those with v3 pump-mode
 intervals and uses v3 graph CGM as a fallback. Clinical timestamps use the
 configured timezone; regional server selection remains explicit and independent
 of timezone. See [mapping, safeguards and limitations](docs/glooko-sync.md).
-Automated-delivery, maximum-delivery and pause intervals are displayed using
-Nightscout's existing duration notes. They are historical annotations, not basal
+Pump-state intervals outside normal automated delivery (manual or limited mode,
+maximum delivery, pauses) are displayed using Nightscout's existing duration
+notes, labelled with their duration, e.g. `Manual mode (45 min)`; normal
+automated delivery in automated mode adds no note. They are historical annotations, not basal
 rates, live pump status or alerts; they do not change calculated insulin doses.
 
 `CONNECT_GLOOKO_AUTH_MODE=web` uses Glooko's web sign-in form with CSRF

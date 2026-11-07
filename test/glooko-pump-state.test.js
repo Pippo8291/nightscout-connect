@@ -29,7 +29,7 @@ test('five drawing points become one historical note, never insulin or basal', (
   assert.equal(row.eventType, 'Note');
   assert.equal(row.duration, 30);
   assert.equal(row.created_at, '2026-07-01T10:00:00.000Z');
-  assert.equal(row.notes, 'Automated delivery paused');
+  assert.equal(row.notes, 'Automated delivery paused (30 min)');
   assert.equal(row.glookoPumpState.historical, true);
   for (const field of ['insulin', 'carbs', 'absolute', 'rate', 'percent', 'isAnnouncement'])
     assert.equal(row[field], undefined);
@@ -38,7 +38,7 @@ test('five drawing points become one historical note, never insulin or basal', (
 test('adjacent identical intervals merge and real gaps remain gaps', () => {
   const out = transform(
     batch({
-      basalBarAutomated: [
+      basalBarAutomatedSuspend: [
         ...rect(start, start + 600),
         ...rect(start + 600, start + 1200),
         ...rect(start + 1800, start + 2400)
@@ -63,10 +63,8 @@ test('suspension and maximum delivery take precedence without overlapping bars',
   assert.deepEqual(
     out.treatments.map((r) => [r.glookoPumpState.state, r.duration]),
     [
-      ['automated', 10],
       ['maximum', 10],
-      ['paused', 20],
-      ['automated', 20]
+      ['paused', 20]
     ]
   );
   for (let i = 1; i < out.treatments.length; i++)
@@ -76,14 +74,14 @@ test('suspension and maximum delivery take precedence without overlapping bars',
     );
 });
 test('unchanged replay and extended end time keep the same source identity', () => {
-  const a = transform(batch({ basalBarAutomated: rect(start, start + 600) }), opts);
-  const b = transform(batch({ basalBarAutomated: rect(start, start + 1200) }), opts);
+  const a = transform(batch({ basalBarAutomatedSuspend: rect(start, start + 600) }), opts);
+  const b = transform(batch({ basalBarAutomatedSuspend: rect(start, start + 1200) }), opts);
   assert.equal(a.treatments[0].identifier, b.treatments[0].identifier);
   assert.notEqual(a.treatments[0].duration, b.treatments[0].duration);
-  assert.deepEqual(a, transform(batch({ basalBarAutomated: rect(start, start + 600) }), opts));
+  assert.deepEqual(a, transform(batch({ basalBarAutomatedSuspend: rect(start, start + 600) }), opts));
   assert.notEqual(
     a.treatments[0].identifier,
-    transform(batch({ basalBarAutomated: rect(start, start + 600) }), {
+    transform(batch({ basalBarAutomatedSuspend: rect(start, start + 600) }), {
       ...opts,
       glookoEmail: 'another@example.test'
     }).treatments[0].identifier
@@ -91,7 +89,7 @@ test('unchanged replay and extended end time keep the same source identity', () 
 });
 test('midnight slices retain identity when the fetch window advances', () => {
   const midnight = Date.parse('2026-07-02T00:00:00Z') / 1000;
-  const first = batch({ basalBarAutomated: rect(midnight - 600, midnight + 600) });
+  const first = batch({ basalBarAutomatedSuspend: rect(midnight - 600, midnight + 600) });
   first.glookoGraphWindow.end = '2026-07-03T00:00:00.000Z';
   const second = JSON.parse(JSON.stringify(first));
   second.glookoGraphWindow.start = '2026-07-02T00:00:00.000Z';
@@ -112,8 +110,37 @@ test('pump mode metadata is deduplicated and combined with delivery states', () 
     opts
   );
   assert.equal(out.treatments.length, 3);
-  assert.equal(out.treatments[1].notes, 'Automated delivery (limited mode)');
+  assert.deepEqual(
+    out.treatments.map((r) => r.notes),
+    ['Limited automated mode (10 min)', 'Automated delivery (limited mode, 10 min)', 'Limited automated mode (40 min)']
+  );
   assert.ok(out.treatments.every((r) => r.glookoSource === 'pump-state'));
+});
+test('normal automated delivery adds no note; a manual stretch is noted with its duration', () => {
+  const mode = (from, to) => ({
+    timestamp: new Date(from * 1000).toISOString(),
+    endTimestamp: new Date(to * 1000).toISOString(),
+    duration: to - from
+  });
+  const out = transform(
+    batch({
+      pumpOp5AutomaticMode: [mode(start - 3600, start), mode(start + 2700, start + 7200)],
+      pumpOp5ManualMode: [mode(start, start + 2700)],
+      basalBarAutomated: [...rect(start - 3600, start), ...rect(start + 2700, start + 7200)]
+    }),
+    opts
+  );
+  assert.equal(out.treatments.length, 1);
+  const [row] = out.treatments;
+  assert.equal(row.eventType, 'Note');
+  assert.equal(row.notes, 'Manual mode (45 min)');
+  assert.equal(row.duration, 45);
+  assert.equal(row.created_at, '2026-07-01T10:00:00.000Z');
+  // Reconciliation keeps only the manual note, so earlier "Automated delivery"
+  // notes in the window are removed.
+  assert.deepEqual(out.glookoSync.pumpStateWindow.identifiers, [row.identifier]);
+  // Automated delivery without pump-mode data is the normal case too.
+  assert.equal(transform(batch({ basalBarAutomated: rect(start, start + 600) }), opts).treatments.length, 0);
 });
 test('malformed delivery rectangles fail explicitly instead of guessing a rate', () => {
   const valid = rect(start, start + 600);
