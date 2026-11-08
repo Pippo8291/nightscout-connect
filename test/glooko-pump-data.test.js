@@ -12,7 +12,11 @@ function markerStore() {
   let docs = [],
     id = 0,
     creates = 0;
+  // Without an explicit start Nightscout applies its default query window, and a marker
+  // that has not moved for a while (long pump gap) would be missed or duplicated.
+  const epochStart = (find) => assert.deepEqual(find.created_at, { $gte: '1970-01-01T00:00:00.000Z' });
   const list = async ({ find }) =>
+    epochStart(find) ||
     docs
       .filter(
         (d) =>
@@ -26,6 +30,7 @@ function markerStore() {
     return rows;
   };
   const remove = async ({ find }) => {
+    epochStart(find);
     assert.equal(find.device, pumpData.DEVICE);
     assert.equal(find['glookoPumpData.owner'], owner);
     docs = docs.filter(
