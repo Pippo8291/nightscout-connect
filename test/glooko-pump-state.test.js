@@ -2,8 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { transform } = require('../lib/sources/glooko/map');
-const { rectangles, DELIVERY_SERIES } = require('../lib/sources/glooko/pump-state');
+const { transform, dateFor, identifier } = require('../lib/sources/glooko/map');
+const { rectangles, mapStateNotes, DELIVERY_SERIES } = require('../lib/sources/glooko/pump-state');
 const reconcile = require('../lib/outputs/glooko-pump-state');
 const opts = { glookoEmail: 'synthetic@example.test', glookoTimezone: 'Europe/Berlin' };
 const start = Date.parse('2026-07-01T12:00:00Z') / 1000;
@@ -141,6 +141,35 @@ test('normal automated delivery adds no note; a manual stretch is noted with its
   assert.deepEqual(out.glookoSync.pumpStateWindow.identifiers, [row.identifier]);
   // Automated delivery without pump-mode data is the normal case too.
   assert.equal(transform(batch({ basalBarAutomated: rect(start, start + 600) }), opts).treatments.length, 0);
+});
+test('pump data reaches the end of the newest interval, normal automated delivery included', () => {
+  const out = transform(
+    batch({
+      basalBarAutomatedSuspend: rect(start, start + 600),
+      basalBarAutomated: rect(start + 600, start + 3600)
+    }),
+    opts
+  );
+  assert.deepEqual(
+    out.treatments.map((r) => r.notes),
+    ['Automated delivery paused (10 min)']
+  );
+  assert.deepEqual(out.glookoSync.pumpData, {
+    owner: out.glookoSync.pumpStateWindow.accountKey,
+    until: '2026-07-01T11:00:00.000Z'
+  });
+  assert.match(out.glookoSync.pumpData.owner, /^glooko:pump-state-owner:[a-f0-9]{64}$/);
+  // Only normal automated delivery: no note, but pump data all the same.
+  const normal = transform(batch({ basalBarAutomated: rect(start, start + 1800) }), opts);
+  assert.equal(normal.treatments.length, 0);
+  assert.equal(normal.glookoSync.pumpData.until, '2026-07-01T10:30:00.000Z');
+});
+test('no pump data without a supported graph or any interval', () => {
+  const tools = { dateFor, identifier };
+  assert.equal(mapStateNotes({ v3Graph: { series: {} } }, opts, tools), null);
+  assert.equal(transform({ v3Graph: { series: {} } }, opts).glookoSync.pumpData, undefined);
+  assert.equal(mapStateNotes(batch(), opts, tools).until, null);
+  assert.equal(transform(batch(), opts).glookoSync.pumpData, undefined);
 });
 test('malformed delivery rectangles fail explicitly instead of guessing a rate', () => {
   const valid = rect(start, start + 600);

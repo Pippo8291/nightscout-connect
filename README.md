@@ -307,6 +307,28 @@ notes, labelled with their duration, e.g. `Manual mode (45 min)`; normal
 automated delivery in automated mode adds no note. They are historical annotations, not basal
 rates, live pump status or alerts; they do not change calculated insulin doses.
 
+Up to when Glooko has pump data is kept in one `devicestatus` record per
+account, so other apps can tell when pump data is stale:
+
+```
+{ "device": "nightscout-connect-glooko-pump-data",
+  "created_at": "<time of writing>",
+  "glookoPumpData": { "owner": "<glookoPumpState.accountKey>", "until": "2026-07-01T10:45:00.000Z" } }
+```
+
+* `until` is the end of the newest interval in Glooko's delivery-state graph, in
+  any state, normal automated delivery included. Gaps are never filled.
+* `owner` is the same hashed account key as `glookoPumpState.accountKey` on the
+  state notes. The record holds no credentials, doses or glucose values, and no
+  `pump` field, so Nightscout's IOB and pump pills ignore it.
+* It is written after the clinical writes of a sync succeed, by both the REST
+  and the in-process output, only when `until` moved forward. The new record
+  replaces the account's previous one. `until` never moves backwards.
+* Read the newest one with
+  `GET /api/v1/devicestatus.json?find[device]=nightscout-connect-glooko-pump-data&find[created_at][$gte]=1970-01-01T00:00:00.000Z&count=1`.
+  The `created_at` filter matters: the record is rewritten only when `until`
+  moves, so it can be older than Nightscout's default query window.
+
 `CONNECT_GLOOKO_AUTH_MODE=web` uses Glooko's web sign-in form with CSRF
 token handling; `v3` uses the JSON v3 sign-in followed by a session-user lookup.
 The v3 flow is adapted from [Nocturne's Glooko connector](https://github.com/nightscout/nocturne/tree/main/src/Connectors/Nocturne.Connectors.Glooko).
